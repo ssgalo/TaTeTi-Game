@@ -1,49 +1,71 @@
 import { useState } from 'react'
 import './App.css'
-
-const TURNS = {
-  X: 'x',
-  O: 'o'
-}
-
-
-
-const Square = ({children, updateBoard, index, isSelected}) => {
-  
-  const className = `square ${isSelected ? 'is-selected' : ''}`
-
-  const handleClick = () => {
-    updateBoard(index);
-  }
-
-  return (
-    <div className={className} onClick={handleClick}>
-      {children}
-    </div>
-  )
-}
+import confetti from 'canvas-confetti'
+import { Square } from './components/Square.jsx'
+import { TURNS, WINNER_COMBOS } from './constants.js'
+import { WinnerModal } from './components/WinnerModal.jsx'
 
 function App() {
   const [board, setBoard] = useState(Array(9).fill(null))
   const [turn, setTurn] = useState(TURNS.X)
-  const [winner, setWiner] = useState(null)
+  const [winner, setWinner] = useState(null)
+
+  const resetGame = () => {
+    setBoard(Array(9).fill(null))
+    setTurn(TURNS.X)
+    setWinner(null)
+  }
+
+  const checkEndGame = (newBoard) => {
+    return newBoard.every((square) => square !== null)
+  }
 
   const updateBoard = (index) => {
     //Si ya tiene algo, no hacemos nada
-    if(board[index]) return
+    if(board[index] || winner) return
     
-    //Si no tiene nada, actualizamos el board y el turno
+    //Actualizamos el board
     const newBoard = [...board]
     newBoard[index] = turn
     setBoard(newBoard)
-    
+
+    //Actualizamos el nuevo turno
     const newTurn = turn === TURNS.X ? TURNS.O :  TURNS.X
     setTurn(newTurn)
+
+    //Verificamos si hay un ganador
+    const newWinner = checkWinner(newBoard)
+    if(newWinner){
+      confetti()
+      setWinner(newWinner) //como actualiza el estado, y eso es asíncrono, no bloquea la ejecución del codigo que viene despues
+      //console.log(winner) podría tener el valor como no, porque es ASÍNCRONO!!!!! no hacer asi para detectar el ganador
+    } else if (checkEndGame(newBoard)){
+      setWinner(false)
+    }
+
+  }
+
+  const checkWinner = (boardToCheck) => {
+    //No usamos el board del estado porque es ASÍNCRONO, el setBoard(newBoard) no garantiza que ya figure el board ultimo
+    //Revisamos todas las combinaciones posibles a ver si coinciden
+      console.log("-----------NUEVOS COMBO--------")
+    for(const combo of WINNER_COMBOS) {
+      const [a, b, c] = combo
+      
+      console.log(boardToCheck[a],boardToCheck[b], boardToCheck[c])
+
+      if(boardToCheck[a] && boardToCheck[a] === boardToCheck[b] && boardToCheck[b] === boardToCheck[c]){
+        return boardToCheck[a]
+      }
+    }
+    //Si no ganó, retornamos null
+    return null
   }
 
   return (
     <main className='board'>
       <h1>Tic tac toe</h1>
+      <button onClick={resetGame}>Resetear</button>
       <section className='game'>
         {
           board.map((square, index) =>  {
@@ -62,6 +84,9 @@ function App() {
         <Square isSelected={turn === TURNS.O}>
           {TURNS.O}
         </Square>
+      </section>
+      <section>
+        <WinnerModal winner={winner} resetGame={resetGame}></WinnerModal>
       </section>
     </main>
   )
